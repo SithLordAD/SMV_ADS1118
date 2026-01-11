@@ -69,7 +69,42 @@ static void MX_SPI1_Init(void);
 int main(void)
 {
 
-	uint16_t spi_buf;
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_USART2_UART_Init();
+  MX_SPI1_Init();
+  /* USER CODE BEGIN 2 */
+
+  /* USER CODE END 2 */
+  double factor = (4.096*2)/32767;
+  uint16_t spi_buf;
+  double final_value;
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while (1)
+  {
+    /* USER CODE END WHILE */
+
 	/*
 	 * You can view spi_buf via the Variables tab in the debugger but for some reason I can't
 	 * get it to show up on live expressions. On the Variables tab, you'll have to keep stepping
@@ -89,17 +124,21 @@ int main(void)
 	while (1)
 	{
 	/* USER CODE END WHILE */
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
-	if(HAL_SPI_Transmit(&hspi1, (uint16_t*)&instr_code, 1, 100)!= HAL_OK){
-		Error_Handler();
-	}
-	if(HAL_SPI_Receive(&hspi1, &spi_buf, 1, 100) != HAL_OK){
-		Error_Handler();
-	}
-	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-	HAL_Delay(100);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+		if(HAL_SPI_Transmit(&hspi1, (uint16_t*)&instr_code, 1, 100)!= HAL_OK){
+			Error_Handler();
+		}
+		if(HAL_SPI_Receive(&hspi1, (uint16_t*) &spi_buf, 1, 100) != HAL_OK){
+			Error_Handler();
+		}
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+		final_value = spi_buf*factor;
+		HAL_Delay(100);
 
+		/* USER CODE BEGIN 3 */
+		}
 
+	/* USER CODE END 3 */
 	/* USER CODE BEGIN 3 */
 	}
 
@@ -242,7 +281,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
@@ -250,12 +289,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PB6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
