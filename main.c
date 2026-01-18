@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "smv_ads1118.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -45,6 +46,15 @@ SPI_HandleTypeDef hspi1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+static uint16_t spi_buf = 0;
+//static uint8_t spi_buf [2] = {0};
+//static uint8_t input_code [2] = {0b11000011, 0b10101011};
+static uint16_t input_code;
+static double factor =  (4.096*2)/32767;
+double adc_read = 0;
+static int16_t adc_read_raw = 0;
+static int16_t adc_cast = 0;
+
 
 /* USER CODE END PV */
 
@@ -68,81 +78,62 @@ static void MX_SPI1_Init(void);
   */
 int main(void)
 {
-
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_SPI1_Init();
-  /* USER CODE BEGIN 2 */
 
-  /* USER CODE END 2 */
-  double factor = (4.096*2)/32767;
-  uint16_t spi_buf;
-  double final_value;
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+  double finalValue = 0;
+
   while (1)
   {
     /* USER CODE END WHILE */
-
 	/*
 	 * You can view spi_buf via the Variables tab in the debugger but for some reason I can't
 	 * get it to show up on live expressions. On the Variables tab, you'll have to keep stepping
 	 * over manually. I'll have to diagnose this issue during testing.
 	 */
-	uint16_t instr_code = 0b1100001101001011;
 	HAL_Init();
-
 	SystemClock_Config();
-
-
 	MX_GPIO_Init();
 	MX_USART2_UART_Init();
 	MX_SPI1_Init();
 
+	struct input_code{
+		unsigned int SS: 1;
+		unsigned int IN_MUX: 3;
+		unsigned int PGA: 3;
+		unsigned int MODE: 1;
+		unsigned int DR: 3; //128 SPS
+		unsigned int TS: 1; //ADC MODE
+		unsigned int NOP: 2;
+		unsigned int RES: 1;
+	};
 
 	while (1)
 	{
-	/* USER CODE END WHILE */
+
+		input_code = 0b1100001110101011;
+
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-		if(HAL_SPI_Transmit(&hspi1, (uint16_t*)&instr_code, 1, 100)!= HAL_OK){
+		if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)&input_code, (uint16_t*)&spi_buf, 1, 100)!= HAL_OK){
 			Error_Handler();
 		}
-		if(HAL_SPI_Receive(&hspi1, (uint16_t*) &spi_buf, 1, 100) != HAL_OK){
-			Error_Handler();
-		}
+		HAL_Delay(10);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-		final_value = spi_buf*factor;
+
+//		adc_read_raw = 0;
+//		memcpy(&adc_read_raw, spi_buf, 2);
+
+		adc_cast = (uint16_t)spi_buf;
+		adc_read =  (double)adc_cast*factor;
+
 		HAL_Delay(100);
 
-		/* USER CODE BEGIN 3 */
-		}
-
-	/* USER CODE END 3 */
-	/* USER CODE BEGIN 3 */
 	}
+  }
 
-  /* USER CODE END 3 */
 }
 
 /**
