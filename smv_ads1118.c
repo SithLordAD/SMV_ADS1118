@@ -2,7 +2,7 @@
 
 static double SMV_ADS1118_Read_Main(SMV_ads1118 *ads){
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)(ads->adc_config), (uint16_t*)&(ads->spi_buf.unsgnd), 1, 100)!= HAL_OK){
+	if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)&(ads->adc_config), (uint16_t*)&(ads->spi_buf.unsgnd), 1, 100)!= HAL_OK){
 		Error_Handler();
 		ads->error_flag = 1;
 	}
