@@ -22,38 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
-
-static enum ADC_CHANNELS{
-	ADC_CHANNEL_0 = 0b100<<12,
-	ADC_CHANNEL_1 = 0b101<<12,
-	ADC_CHANNEL_2 = 0b110<<12,
-	ADC_CHANNEL_3 = 0b111<<12
-};
-
-#define ADC_SS 0b1 << 15
-#define ADC_PGA 0b001 << 9
-#define ADC_MODE 0b1 << 8
-#define ADC_DR 0b101 << 5
-#define ADC_TS 0b0 << 4
-#define ADC_PU 0b1 << 3
-#define ADC_NOP 0b01 << 1
-#define ADC_RES 0b1
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-union uintToInt {
-	uint16_t unsgnd;
-	int16_t sgnd;
-};
-
+#include "smv_ads1118.h"
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,21 +33,17 @@ union uintToInt {
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 UART_HandleTypeDef huart2;
+SMV_ADS1118 adc1;
+
 
 /* USER CODE BEGIN PV */
-static double factor =  (4.096*2)/32767;
-double adc_read = 0;
-static int16_t adc_cast = 0;
-static union uintToInt spi_buf;
-double test = 0;
+static double test [4] = {0};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_SPI1_Init(void);
-double ADS1118_Read_Main(uint16_t adc_channel);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -98,51 +63,21 @@ int main(void)
   SystemClock_Config();
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_SPI1_Init();
 
-  while (1)
-  {
-
-	HAL_Init();
-	SystemClock_Config();
-	MX_GPIO_Init();
-	MX_USART2_UART_Init();
-	MX_SPI1_Init();
-
+  adc1 = ADS_new();
+  adc1.init(&adc1, &hspi1);
 
 	while (1)
 	{
-
-		test = ADS1118_Read_Main(ADC_CHANNEL_0);
+		test[0] = adc1.read(&adc1, ADC_CHANNEL_0);
+		test[1] = adc1.read(&adc1, ADC_CHANNEL_1);
+		test[2] = adc1.read(&adc1, ADC_CHANNEL_2);
+		test[3] = adc1.read(&adc1, ADC_CHANNEL_3);
 		HAL_Delay(20);
 	}
-  }
 
 }
-
-double ADS1118_Read_Main(uint16_t adc_channel){
-	 int16_t input_code =
-				ADC_SS |
-				adc_channel |
-				ADC_PGA |
-				ADC_MODE |
-				ADC_DR |
-				ADC_TS |
-				ADC_PU |
-				ADC_NOP |
-				ADC_RES;
-
-	double test = 0;
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)(&input_code), (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
-		Error_Handler();
-	}
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
-	adc_cast = spi_buf.sgnd;
-	return (double)adc_cast*factor;
-}
-/**
+/*
   * @brief System Clock Configuration
   * @retval None
   */
