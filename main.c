@@ -18,11 +18,27 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "smv_ads1118.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+
+static enum ADC_CHANNELS{
+	ADC_CHANNEL_0 = 0b100<<12,
+	ADC_CHANNEL_1 = 0b101<<12,
+	ADC_CHANNEL_2 = 0b110<<12,
+	ADC_CHANNEL_3 = 0b111<<12
+};
+
+#define ADC_SS 0b1 << 15
+#define ADC_PGA 0b001 << 9
+#define ADC_MODE 0b1 << 8
+#define ADC_DR 0b101 << 5
+#define ADC_TS 0b0 << 4
+#define ADC_PU 0b1 << 3
+#define ADC_NOP 0b01 << 1
+#define ADC_RES 0b1
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -33,6 +49,11 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+union uintToInt {
+	uint16_t unsgnd;
+	int16_t sgnd;
+};
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -42,20 +63,14 @@
 
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
-
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-static uint16_t spi_buf = 0;
-//static uint8_t spi_buf [2] = {0};
-//static uint8_t input_code [2] = {0b11000011, 0b10101011};
-static uint16_t input_code;
 static double factor =  (4.096*2)/32767;
 double adc_read = 0;
-static int16_t adc_read_raw = 0;
 static int16_t adc_cast = 0;
-
-
+static union uintToInt spi_buf;
+double test = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,6 +78,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
+double ADS1118_Read_Main(uint16_t adc_channel);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -84,58 +100,48 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SPI1_Init();
 
-  double finalValue = 0;
-
   while (1)
   {
-    /* USER CODE END WHILE */
-	/*
-	 * You can view spi_buf via the Variables tab in the debugger but for some reason I can't
-	 * get it to show up on live expressions. On the Variables tab, you'll have to keep stepping
-	 * over manually. I'll have to diagnose this issue during testing.
-	 */
+
 	HAL_Init();
 	SystemClock_Config();
 	MX_GPIO_Init();
 	MX_USART2_UART_Init();
 	MX_SPI1_Init();
 
-	struct input_code{
-		unsigned int SS: 1;
-		unsigned int IN_MUX: 3;
-		unsigned int PGA: 3;
-		unsigned int MODE: 1;
-		unsigned int DR: 3; //128 SPS
-		unsigned int TS: 1; //ADC MODE
-		unsigned int NOP: 2;
-		unsigned int RES: 1;
-	};
 
 	while (1)
 	{
 
-		input_code = 0b1100001110101011;
-
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-		if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)&input_code, (uint16_t*)&spi_buf, 1, 100)!= HAL_OK){
-			Error_Handler();
-		}
-		HAL_Delay(10);
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
-//		adc_read_raw = 0;
-//		memcpy(&adc_read_raw, spi_buf, 2);
-
-		adc_cast = (uint16_t)spi_buf;
-		adc_read =  (double)adc_cast*factor;
-
-		HAL_Delay(100);
-
+		test = ADS1118_Read_Main(ADC_CHANNEL_0);
+		HAL_Delay(20);
 	}
   }
 
 }
 
+double ADS1118_Read_Main(uint16_t adc_channel){
+	 int16_t input_code =
+				ADC_SS |
+				adc_channel |
+				ADC_PGA |
+				ADC_MODE |
+				ADC_DR |
+				ADC_TS |
+				ADC_PU |
+				ADC_NOP |
+				ADC_RES;
+
+	double test = 0;
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)(&input_code), (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
+		Error_Handler();
+	}
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+
+	adc_cast = spi_buf.sgnd;
+	return (double)adc_cast*factor;
+}
 /**
   * @brief System Clock Configuration
   * @retval None
