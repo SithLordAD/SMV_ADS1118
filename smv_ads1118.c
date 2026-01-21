@@ -38,8 +38,10 @@ static void SMV_ADS1118_Setup (SMV_ADS1118 *ads, SPI_HandleTypeDef * hspi_pass){
 	ads->hspi->Init.TIMode = SPI_TIMODE_DISABLE;
 	ads->hspi->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
 	ads->hspi->Init.CRCPolynomial = 10;
+
 	if (HAL_SPI_Init(ads->hspi) != HAL_OK)
 	{
+		ads->error_flag = 1;
 		Error_Handler();
 	}
 }
@@ -52,7 +54,6 @@ static void SMV_ADS1118_Setup (SMV_ADS1118 *ads, SPI_HandleTypeDef * hspi_pass){
 */
 SMV_ADS1118 ADS_new(void) {
 	SMV_ADS1118 ads = {
-		.adc_value = 0,
 		.error_flag = 0
 	};
 	ads.adc_config =

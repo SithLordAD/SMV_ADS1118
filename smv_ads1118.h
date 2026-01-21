@@ -28,15 +28,16 @@
  * SMV in front of define to prevent naming
  * error with HAL adc definitions
  */
+
+/* ----- ADC Settings configuration ----- */
+#define ADC_SS      0b1     << ADC_SS_SHIFT     /* width = 1 */
+
 #define ADC_CHANNEL_CLEAR 0b000 << ADC_CHAN_SHIFT
 #define ADC_CHANNEL_0	0b100 << ADC_CHAN_SHIFT
 #define ADC_CHANNEL_1	0b101 << ADC_CHAN_SHIFT
 #define ADC_CHANNEL_2	0b110 << ADC_CHAN_SHIFT
 #define ADC_CHANNEL_3	0b111 << ADC_CHAN_SHIFT
 
-/* ----- ADC Settings configuration ----- */
-#define ADC_SS      0b1     << ADC_SS_SHIFT     /* width = 1 */
-/*		ADC_CHAN	0b000	<< ADC_CHAN_SHIFT	/* width = 3 */
 #define ADC_PGA     0b001   << ADC_PGA_SHIFT    /* width = 3 */
 #define ADC_MODE    0b1     << ADC_MODE_SHIFT   /* width = 1 */
 #define ADC_DR      0b101   << ADC_DR_SHIFT     /* width = 3 */
@@ -63,7 +64,6 @@ typedef struct SMV_ADS1118 SMV_ADS1118;
 struct SMV_ADS1118{
 
 	/* data (largest alignment first) */
-    double adc_value;
 	uint16_t adc_config;
 	SPI_HandleTypeDef * hspi;
 	volatile uint8_t error_flag; /* volatile to force consistent checks in memory for flag */
