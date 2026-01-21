@@ -18,26 +18,12 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "smv_ads1118.h"
+#include "stm32f4xx_hal.h"
+
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
-
-static enum ADC_CHANNELS{
-	ADC_CHANNEL_0 = 0b100<<12,
-	ADC_CHANNEL_1 = 0b101<<12,
-	ADC_CHANNEL_2 = 0b110<<12,
-	ADC_CHANNEL_3 = 0b111<<12
-};
-
-#define ADC_SS 0b1 << 15
-#define ADC_PGA 0b001 << 9
-#define ADC_MODE 0b1 << 8
-#define ADC_DR 0b101 << 5
-#define ADC_TS 0b0 << 4
-#define ADC_PU 0b1 << 3
-#define ADC_NOP 0b01 << 1
-#define ADC_RES 0b1
 
 /* USER CODE END Includes */
 
@@ -49,11 +35,6 @@ static enum ADC_CHANNELS{
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-union uintToInt {
-	uint16_t unsgnd;
-	int16_t sgnd;
-};
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -63,14 +44,14 @@ union uintToInt {
 
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
+
 UART_HandleTypeDef huart2;
 
+ADS1118 adc1;
+double voltage;
+
 /* USER CODE BEGIN PV */
-static double factor =  (4.096*2)/32767;
-double adc_read = 0;
-static int16_t adc_cast = 0;
-static union uintToInt spi_buf;
-double test = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,7 +59,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
-double ADS1118_Read_Main(uint16_t adc_channel);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -94,54 +74,22 @@ double ADS1118_Read_Main(uint16_t adc_channel);
   */
 int main(void)
 {
-  HAL_Init();
-  SystemClock_Config();
-  MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  MX_SPI1_Init();
-
-  while (1)
-  {
-
-	HAL_Init();
-	SystemClock_Config();
-	MX_GPIO_Init();
-	MX_USART2_UART_Init();
-	MX_SPI1_Init();
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
 
 
-	while (1)
-	{
+    adc1 =
 
-		test = ADS1118_Read_Main(ADC_CHANNEL_0);
-		HAL_Delay(20);
-	}
-  }
+    adc1.init(&adc1, &hspi1, GPIOA, GPIO_PIN_4);
 
+    while (1)
+    {
+        voltage = adc1.read(&adc1, 0);
+        HAL_Delay(20);
+    }
 }
 
-double ADS1118_Read_Main(uint16_t adc_channel){
-	 int16_t input_code =
-				ADC_SS |
-				adc_channel |
-				ADC_PGA |
-				ADC_MODE |
-				ADC_DR |
-				ADC_TS |
-				ADC_PU |
-				ADC_NOP |
-				ADC_RES;
-
-	double test = 0;
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	if (HAL_SPI_TransmitReceive(&hspi1, (uint16_t*)(&input_code), (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
-		Error_Handler();
-	}
-	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
-
-	adc_cast = spi_buf.sgnd;
-	return (double)adc_cast*factor;
-}
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -159,11 +107,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+  RCC_OscInitStruct.PLL.PLLM = 8;
   RCC_OscInitStruct.PLL.PLLN = 72;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 2;
@@ -210,7 +159,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
   hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
