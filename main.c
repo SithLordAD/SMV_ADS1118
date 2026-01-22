@@ -48,7 +48,7 @@ SPI_HandleTypeDef hspi1;
 UART_HandleTypeDef huart2;
 
 ADS1118 adc1;
-double voltage;
+double voltage = 0;
 
 /* USER CODE BEGIN PV */
 
@@ -78,14 +78,12 @@ int main(void)
     SystemClock_Config();
     MX_GPIO_Init();
 
-
-    adc1 =
-
+    adc1 = ADS1118_new();
     adc1.init(&adc1, &hspi1, GPIOA, GPIO_PIN_4);
 
     while (1)
     {
-        voltage = adc1.read(&adc1, 0);
+        voltage = adc1.read(&adc1, ADC_CHANNEL_0);
         HAL_Delay(20);
     }
 }
