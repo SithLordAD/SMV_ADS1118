@@ -6,7 +6,18 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, uint16_t adc_channel){
 	int16_t adc_cast = 0;
 	union uintToInt spi_buf;
 
-	ads->adc_config = ((ads->adc_config) & ADC_CHANNEL_CLEAR) | adc_channel;
+//	ads->adc_config = ((ads->adc_config) & ADC_CHANNEL_CLEAR) | adc_channel;
+	if (adc_channel == ADC_CHANNEL_0){
+		ads->adc_config = 0b1100001110101011;
+	}else if (adc_channel == ADC_CHANNEL_1){
+		ads->adc_config = 0b1101001110101011;
+	}else if (adc_channel == ADC_CHANNEL_2){
+		ads->adc_config = 0b1110001110101011;
+	}else if (adc_channel == ADC_CHANNEL_3){
+		ads->adc_config = 0b1111001110101011;
+	}else{
+		return -1;
+	}
 
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 	if (HAL_SPI_TransmitReceive(ads->hspi, (uint16_t*)&(ads->adc_config), (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
@@ -31,7 +42,7 @@ static void SMV_ADS1118_Setup (SMV_ADS1118 *ads, SPI_HandleTypeDef * hspi_pass){
 	ads->hspi->Init.Direction = SPI_DIRECTION_2LINES;
 	ads->hspi->Init.DataSize = SPI_DATASIZE_16BIT;
 	ads->hspi->Init.CLKPolarity = SPI_POLARITY_LOW;
-	ads->hspi->Init.CLKPhase = SPI_PHASE_1EDGE;
+	ads->hspi->Init.CLKPhase = SPI_PHASE_2EDGE;
 	ads->hspi->Init.NSS = SPI_NSS_SOFT;
 	ads->hspi->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
 	ads->hspi->Init.FirstBit = SPI_FIRSTBIT_MSB;

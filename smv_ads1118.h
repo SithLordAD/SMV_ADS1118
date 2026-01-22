@@ -32,7 +32,7 @@
 /* ----- ADC Settings configuration ----- */
 #define ADC_SS      0b1     << ADC_SS_SHIFT     /* width = 1 */
 
-#define ADC_CHANNEL_CLEAR 0b000 << ADC_CHAN_SHIFT
+#define ADC_CHANNEL_CLEAR ~(0b111 << ADC_CHAN_SHIFT)
 #define ADC_CHANNEL_0	0b100 << ADC_CHAN_SHIFT
 #define ADC_CHANNEL_1	0b101 << ADC_CHAN_SHIFT
 #define ADC_CHANNEL_2	0b110 << ADC_CHAN_SHIFT
@@ -47,7 +47,7 @@
 #define ADC_RES     0b1     << ADC_RES_SHIFT    /* width = 1 */
 
 /* Factor SPI Calculations */
-#define ADC_FACTOR_CALC (4.096*2)/32767
+#define ADC_FACTOR_CALC (4.096)/32767
 
 
 union uintToInt {

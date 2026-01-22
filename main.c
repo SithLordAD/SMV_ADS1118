@@ -69,11 +69,14 @@ int main(void)
 
 	while (1)
 	{
-		test[0] = adc1.read(&adc1, ADC_CHANNEL_0);
-		test[1] = adc1.read(&adc1, ADC_CHANNEL_1);
-		test[2] = adc1.read(&adc1, ADC_CHANNEL_2);
-		test[3] = adc1.read(&adc1, ADC_CHANNEL_3);
-		HAL_Delay(20);
+		test[0] = adc1.read(&adc1, ADC_CHANNEL_3);
+		HAL_Delay(5);
+//		test[1] = adc1.read(&adc1, ADC_CHANNEL_1);
+//		HAL_Delay(5);
+//		test[2] = adc1.read(&adc1, ADC_CHANNEL_2);
+//		HAL_Delay(5);
+//		test[3] = adc1.read(&adc1, ADC_CHANNEL_3);
+//		HAL_Delay(5);
 	}
 
 }
@@ -123,43 +126,6 @@ void SystemClock_Config(void)
   }
 }
 
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* USER CODE BEGIN SPI1_Init 0 */
-
-  /* USER CODE END SPI1_Init 0 */
-
-  /* USER CODE BEGIN SPI1_Init 1 */
-
-  /* USER CODE END SPI1_Init 1 */
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_16BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN SPI1_Init 2 */
-
-  /* USER CODE END SPI1_Init 2 */
-
-}
 
 /**
   * @brief USART2 Initialization Function
