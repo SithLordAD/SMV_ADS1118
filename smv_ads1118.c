@@ -10,6 +10,8 @@ typedef union {
 } ADS1118_Caster;
 
 
+static double ADS1118_GetLSB(ADS1118 *adc);
+
 /**
  * Purpose: a function to quickly setup our SPI settings, uses some defaults for the bitfield
  * - allows for use across multiple SPI clocks
@@ -18,6 +20,7 @@ typedef union {
  */
 static void ADS1118_QuickSetup(ADS1118 *adc, SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_port, uint16_t cs_pin){
     adc->hspi = hspi;
+    adc->hspi->Instance = SPI1;
 
 
     if (adc->hspi->Instance == SPI1) __HAL_RCC_SPI1_CLK_ENABLE();
@@ -45,10 +48,14 @@ static void ADS1118_QuickSetup(ADS1118 *adc, SPI_HandleTypeDef *hspi, GPIO_TypeD
 
     /* Set default parameters in the bit field */
     adc->last_raw   = 0;
-    adc->config.inputCode = 0; // Resets the raw ADC reading to 0
-    adc->config.bits.start = 1; // default start conversion
-    adc->config.bits.mode  = 1; // default single-shot
-    adc->config.bits.pga   = 1; // default ±4.096V
+    adc->config.inputCode = 0;      // clear first
+    adc->config.bits.reserved = 1;  // REQUIRED by datasheet
+    adc->config.bits.nop      = 0b01;
+    adc->config.bits.pullup  = 1;
+    adc->config.bits.dr      = 0b101;
+    adc->config.bits.mode    = 1;
+    adc->config.bits.start   = 1;
+    adc->config.bits.pga     = ADS1118_PGA_4_096V;
     adc->lsb_factor = ADS1118_GetLSB(adc); // generates the factor to normalize the ratio
 }
 
