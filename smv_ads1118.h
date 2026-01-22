@@ -67,11 +67,14 @@ struct SMV_ADS1118{
 	uint16_t adc_config;
 	SPI_HandleTypeDef * hspi;
 	volatile uint8_t error_flag; /* volatile to force consistent checks in memory for flag */
+	double channel_reads [4];
 
 	/* function pointers 4+ bytes */
 	double (*read)(SMV_ADS1118*, uint16_t);
+	void (*sweep)(SMV_ADS1118*, double*);
 	uint8_t (*checkFlag)(SMV_ADS1118*);
 	void (*init)(SMV_ADS1118*, SPI_HandleTypeDef *);
+
 
 };
 

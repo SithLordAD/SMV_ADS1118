@@ -69,14 +69,12 @@ int main(void)
 
 	while (1)
 	{
-		test[0] = adc1.read(&adc1, ADC_CHANNEL_3);
-		HAL_Delay(5);
-//		test[1] = adc1.read(&adc1, ADC_CHANNEL_1);
-//		HAL_Delay(5);
-//		test[2] = adc1.read(&adc1, ADC_CHANNEL_2);
-//		HAL_Delay(5);
-//		test[3] = adc1.read(&adc1, ADC_CHANNEL_3);
-//		HAL_Delay(5);
+		/*WARNING: For consecutive multi-channel reads, use the sweep function!
+		 * If you use the single channel read function in succession, it will return the wrong channel
+		 * This is an issue we are still trying to fix, but the sweep function exists to quickly bypass the issue
+		 */
+		adc1.sweep(&adc1, test);
+		HAL_Delay(10);
 	}
 
 }

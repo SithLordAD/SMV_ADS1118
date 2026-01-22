@@ -7,6 +7,7 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, uint16_t adc_channel){
 	union uintToInt spi_buf;
 
 //	ads->adc_config = ((ads->adc_config) & ADC_CHANNEL_CLEAR) | adc_channel;
+
 	if (adc_channel == ADC_CHANNEL_0){
 		ads->adc_config = 0b1100001110101011;
 	}else if (adc_channel == ADC_CHANNEL_1){
@@ -29,6 +30,16 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, uint16_t adc_channel){
 	adc_cast = spi_buf.sgnd;
 	ads->error_flag = 0;
 	return (double)adc_cast * ADC_FACTOR_CALC;
+}
+
+void SMV_ADS1118_Sweep (SMV_ADS1118 *ads, double arr []){
+	arr[0] = ads -> read(ads, ADC_CHANNEL_1);
+	HAL_Delay(5);
+	arr[1] = ads -> read(ads, ADC_CHANNEL_2);
+	HAL_Delay(5);
+	arr[2] = ads -> read(ads, ADC_CHANNEL_3);
+	HAL_Delay(5);
+	arr[3] = ads -> read(ads, ADC_CHANNEL_0);
 }
 
 static uint8_t SMV_ADS1118_Check_Flag(SMV_ADS1118 *ads) {
@@ -65,7 +76,8 @@ static void SMV_ADS1118_Setup (SMV_ADS1118 *ads, SPI_HandleTypeDef * hspi_pass){
 */
 SMV_ADS1118 ADS_new(void) {
 	SMV_ADS1118 ads = {
-		.error_flag = 0
+		.error_flag = 0,
+		.channel_reads = {0}
 	};
 	ads.adc_config =
 		ADC_SS |
@@ -82,6 +94,7 @@ SMV_ADS1118 ADS_new(void) {
 	ads.read	 		= SMV_ADS1118_Read;
 	ads.checkFlag 		= SMV_ADS1118_Check_Flag;
 	ads.init 			= SMV_ADS1118_Setup;
+	ads.sweep			= SMV_ADS1118_Sweep;
 
 	return ads;
 }
