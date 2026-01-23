@@ -20,8 +20,22 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, uint16_t adc_channel){
 		return -1;
 	}
 
+  // this first Transmit tells the ADS1118 what data we want
+  // we don't care about receiving any data because it's data that was on the ADS1118 from before
 	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
-	if (HAL_SPI_TransmitReceive(ads->hspi, (uint16_t*)&(ads->adc_config), (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
+	if (HAL_SPI_Transmit(ads->hspi, (uint16_t*)&(ads->adc_config), 1, 100)!= HAL_OK){
+		ads->error_flag = 1;
+		Error_Handler();
+	}
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
+
+  // Wait 10ms to give ADS1118 time to receive the Transmit we sent and convert voltage to binary number 
+  HAL_Delay(10);
+  // Now, the data from the Transmit we sent before is waiting on the ADS1118
+
+  // Now we just retrieve data that we actually want which is waiting on the ADS118
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+	if (HAL_SPI_Receive(ads->hspi, (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
 		ads->error_flag = 1;
 		Error_Handler();
 	}
@@ -33,13 +47,12 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, uint16_t adc_channel){
 }
 
 void SMV_ADS1118_Sweep (SMV_ADS1118 *ads, double arr []){
-	arr[0] = ads -> read(ads, ADC_CHANNEL_1);
-	HAL_Delay(5);
-	arr[1] = ads -> read(ads, ADC_CHANNEL_2);
-	HAL_Delay(5);
-	arr[2] = ads -> read(ads, ADC_CHANNEL_3);
-	HAL_Delay(5);
-	arr[3] = ads -> read(ads, ADC_CHANNEL_0);
+  // reading ADC_CHANNEL_0 now returns channel 0 data
+	arr[0] = ads -> read(ads, ADC_CHANNEL_0);
+	arr[1] = ads -> read(ads, ADC_CHANNEL_1);
+	arr[2] = ads -> read(ads, ADC_CHANNEL_2);
+	// HAL_Delay(5); <---- removed 5ms delays because read function now delays 10ms to wait for ADS1118
+	arr[3] = ads -> read(ads, ADC_CHANNEL_3);
 }
 
 static uint8_t SMV_ADS1118_Check_Flag(SMV_ADS1118 *ads) {
