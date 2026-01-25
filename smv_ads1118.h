@@ -12,41 +12,6 @@
 #include <stdint.h>
 #include "stm32f4xx_hal.h"
 
-/* ----- Bitshift Definitions ----- */
-//#define ADC_SS_SHIFT    15
-//#define ADC_CHAN_SHIFT	12
-//#define ADC_PGA_SHIFT   9
-//#define ADC_MODE_SHIFT  8
-//#define ADC_DR_SHIFT    5
-//#define ADC_TS_SHIFT    4
-//#define ADC_PU_SHIFT    3
-//#define ADC_NOP_SHIFT   1
-//#define ADC_RES_SHIFT   0
-
-/* ----- ADC Channels -----
- *
- * SMV in front of define to prevent naming
- * error with HAL adc definitions
- */
-
-
-/* ----- ADC Settings configuration ----- */
-//#define ADC_SS      0b1     << ADC_SS_SHIFT     /* width = 1 */
-//
-//#define ADC_CHANNEL_CLEAR ~(0b111 << ADC_CHAN_SHIFT)
-//#define ADC_CHANNEL_0	0b100 << ADC_CHAN_SHIFT
-//#define ADC_CHANNEL_1	0b101 << ADC_CHAN_SHIFT
-//#define ADC_CHANNEL_2	0b110 << ADC_CHAN_SHIFT
-//#define ADC_CHANNEL_3	0b111 << ADC_CHAN_SHIFT
-//
-//#define ADC_PGA     0b001   << ADC_PGA_SHIFT    /* width = 3 */
-//#define ADC_MODE    0b1     << ADC_MODE_SHIFT   /* width = 1 */
-//#define ADC_DR      0b101   << ADC_DR_SHIFT     /* width = 3 */
-//#define ADC_TS      0b0     << ADC_TS_SHIFT     /* width = 1 */
-//#define ADC_PU      0b1     << ADC_PU_SHIFT     /* width = 1 */
-//#define ADC_NOP     0b01    << ADC_NOP_SHIFT    /* width = 2 */
-//#define ADC_RES     0b1     << ADC_RES_SHIFT    /* width = 1 */
-
 /* Factor SPI Calculations */
 #define ADC_FACTOR_CALC (4.096)/32767
 
@@ -70,6 +35,9 @@ union uintToInt {
 #define ADC_CHAN_LENGTH 3
 #define ADC_SS_LENGTH   1
 
+# define SWEEP_DELAY 3
+
+
 /*
  * Input MUX selection
  */
@@ -80,18 +48,6 @@ typedef enum {
     ADC_CHANNEL_3 = 0b111
 } ADC_CHANNELS;
 
-
-/*
- * Programmable Gain Amplifier (FSR)
- */
-typedef enum {
-    ADS1118_PGA_6_144V = 0b000,
-    ADS1118_PGA_4_096V = 0b001,
-    ADS1118_PGA_2_048V = 0b010,
-    ADS1118_PGA_1_024V = 0b011,
-    ADS1118_PGA_0_512V = 0b100,
-    ADS1118_PGA_0_256V = 0b101
-} ADS1118_PGA;
 
 /*
  * 16-bit field for input code to receive data from the ADC [Packed so compiler doesn't add in padding]
@@ -108,7 +64,7 @@ typedef struct __attribute__((packed)) {
     uint16_t start    : ADC_SS_LENGTH;  /* Bit 15 - Start conversion */
 } ADS1118_ConfigBits;
 
-typedef struct __attribute__((packed)) {
+typedef union {
     ADS1118_ConfigBits bits;
     uint16_t           inputCode;
 } ADS1118_Config;
@@ -122,8 +78,6 @@ typedef struct SMV_ADS1118 SMV_ADS1118;
 struct SMV_ADS1118{
 
 	/* data (largest alignment first) */
-//	uint16_t adc_config;
-
 	ADS1118_Config config;
 	SPI_HandleTypeDef * hspi;
 	volatile uint8_t error_flag; /* volatile to force consistent checks in memory for flag */

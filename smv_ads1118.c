@@ -6,20 +6,6 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, ADC_CHANNELS adc_channel){
 	int16_t adc_cast = 0;
 	union uintToInt spi_buf;
 
-//	ads->adc_config = ((ads->adc_config) & ADC_CHANNEL_CLEAR) | adc_channel;
-
-//	if (adc_channel == ADC_CHANNEL_0){
-//		ads->adc_config = 0b1100001110101011;
-//	}else if (adc_channel == ADC_CHANNEL_1){
-//		ads->adc_config = 0b1101001110101011;
-//	}else if (adc_channel == ADC_CHANNEL_2){
-//		ads->adc_config = 0b1110001110101011;
-//	}else if (adc_channel == ADC_CHANNEL_3){
-//		ads->adc_config = 0b1111001110101011;
-//	}else{
-//		return -1;
-//	}
-
 	ads->config.bits.mux = adc_channel;
 	uint16_t inputCode = ads->config.inputCode;
 
@@ -33,8 +19,8 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, ADC_CHANNELS adc_channel){
 	}
 	HAL_GPIO_WritePin(ads->cs_port, ads->cs_pin, GPIO_PIN_SET);
 
-  // Wait 10ms to give ADS1118 time to receive the Transmit we sent and convert voltage to binary number
-	HAL_Delay(10);
+  // Wait 3ms to give ADS1118 time to receive the Transmit we sent and convert voltage to binary number
+	HAL_Delay(SWEEP_DELAY);
   // Now, the data from the Transmit we sent before is waiting on the ADS1118
 
   // Now we just retrieve data that we actually want which is waiting on the ADS118
@@ -53,10 +39,13 @@ static double SMV_ADS1118_Read(SMV_ADS1118 *ads, ADC_CHANNELS adc_channel){
 void SMV_ADS1118_Sweep (SMV_ADS1118 *ads, double arr []){
   // reading ADC_CHANNEL_0 now returns channel 0 data
 	arr[0] = ads -> read(ads, ADC_CHANNEL_0);
+	HAL_Delay(SWEEP_DELAY);
 	arr[1] = ads -> read(ads, ADC_CHANNEL_1);
+	HAL_Delay(SWEEP_DELAY);
 	arr[2] = ads -> read(ads, ADC_CHANNEL_2);
-	// HAL_Delay(5); <---- removed 5ms delays because read function now delays 10ms to wait for ADS1118
+	HAL_Delay(SWEEP_DELAY);
 	arr[3] = ads -> read(ads, ADC_CHANNEL_3);
+	HAL_Delay(SWEEP_DELAY);
 }
 
 static uint8_t SMV_ADS1118_Check_Flag(SMV_ADS1118 *ads) {
@@ -96,7 +85,7 @@ static void SMV_ADS1118_Setup (SMV_ADS1118 *ads, SPI_HandleTypeDef * hspi_pass, 
 	ads->config.bits.dr      = 0b101;
 	ads->config.bits.mode    = 1;
 	ads->config.bits.start   = 1;
-	ads->config.bits.pga     = ADS1118_PGA_4_096V;
+	ads->config.bits.pga     = 0b001; // 4.096 V
 }
 
 /*
@@ -110,16 +99,6 @@ SMV_ADS1118 ADS_new(void) {
 		.error_flag = 0,
 		.channel_reads = {0}
 	};
-//	ads.adc_config =
-//		ADC_SS |
-//		ADC_CHANNEL_CLEAR |
-//		ADC_PGA |
-//		ADC_MODE |
-//		ADC_DR |
-//		ADC_TS |
-//		ADC_PU |
-//		ADC_NOP |
-//		ADC_RES;
 
 	/* function pointer definitions */
 	ads.read	 		= SMV_ADS1118_Read;
