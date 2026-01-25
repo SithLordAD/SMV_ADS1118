@@ -1,138 +1,131 @@
 #include "smv_ads1118.h"
-#include <stdint.h>
 
-void Error_Handler(void); // Must be provided by the user
+void Error_Handler(void); // must be provided by user
 
-/* union to convert b/w unsigned and signed */
-typedef union {
-    uint16_t u;
-    int16_t  s;
-} ADS1118_Caster;
+static double SMV_ADS1118_Read(SMV_ADS1118 *ads, ADC_CHANNELS adc_channel){
+	int16_t adc_cast = 0;
+	union uintToInt spi_buf;
+
+//	ads->adc_config = ((ads->adc_config) & ADC_CHANNEL_CLEAR) | adc_channel;
+
+//	if (adc_channel == ADC_CHANNEL_0){
+//		ads->adc_config = 0b1100001110101011;
+//	}else if (adc_channel == ADC_CHANNEL_1){
+//		ads->adc_config = 0b1101001110101011;
+//	}else if (adc_channel == ADC_CHANNEL_2){
+//		ads->adc_config = 0b1110001110101011;
+//	}else if (adc_channel == ADC_CHANNEL_3){
+//		ads->adc_config = 0b1111001110101011;
+//	}else{
+//		return -1;
+//	}
+
+	ads->config.bits.mux = adc_channel;
+	uint16_t inputCode = ads->config.inputCode;
 
 
-static double ADS1118_GetLSB(ADS1118 *adc);
+  // this first Transmit tells the ADS1118 what data we want
+  // we don't care about receiving any data because it's data that was on the ADS1118 from before
+	HAL_GPIO_WritePin(ads->cs_port, ads->cs_pin, GPIO_PIN_RESET);
+	if (HAL_SPI_Transmit(ads->hspi, (uint16_t*)&inputCode, 1, 100)!= HAL_OK){
+		ads->error_flag = 1;
+		Error_Handler();
+	}
+	HAL_GPIO_WritePin(ads->cs_port, ads->cs_pin, GPIO_PIN_SET);
 
-/**
- * Purpose: a function to quickly setup our SPI settings, uses some defaults for the bitfield
- * - allows for use across multiple SPI clocks
+  // Wait 10ms to give ADS1118 time to receive the Transmit we sent and convert voltage to binary number
+	HAL_Delay(10);
+  // Now, the data from the Transmit we sent before is waiting on the ADS1118
+
+  // Now we just retrieve data that we actually want which is waiting on the ADS118
+  	HAL_GPIO_WritePin(ads->cs_port, ads->cs_pin, GPIO_PIN_RESET);
+	if (HAL_SPI_Receive(ads->hspi, (uint16_t*)&(spi_buf.unsgnd), 1, 100)!= HAL_OK){
+		ads->error_flag = 1;
+		Error_Handler();
+	}
+	HAL_GPIO_WritePin(ads->cs_port, ads->cs_pin, GPIO_PIN_SET);
+
+	adc_cast = spi_buf.sgnd;
+	ads->error_flag = 0;
+	return (double)adc_cast * ADC_FACTOR_CALC;
+}
+
+void SMV_ADS1118_Sweep (SMV_ADS1118 *ads, double arr []){
+  // reading ADC_CHANNEL_0 now returns channel 0 data
+	arr[0] = ads -> read(ads, ADC_CHANNEL_0);
+	arr[1] = ads -> read(ads, ADC_CHANNEL_1);
+	arr[2] = ads -> read(ads, ADC_CHANNEL_2);
+	// HAL_Delay(5); <---- removed 5ms delays because read function now delays 10ms to wait for ADS1118
+	arr[3] = ads -> read(ads, ADC_CHANNEL_3);
+}
+
+static uint8_t SMV_ADS1118_Check_Flag(SMV_ADS1118 *ads) {
+	return ads->error_flag;
+}
+
+static void SMV_ADS1118_Setup (SMV_ADS1118 *ads, SPI_HandleTypeDef * hspi_pass, GPIO_TypeDef *cs_port, uint16_t cs_pin){
+	ads->hspi = hspi_pass;
+	ads->hspi->Instance = SPI1;
+	ads->hspi->Init.Mode = SPI_MODE_MASTER;
+	ads->hspi->Init.Direction = SPI_DIRECTION_2LINES;
+	ads->hspi->Init.DataSize = SPI_DATASIZE_16BIT;
+	ads->hspi->Init.CLKPolarity = SPI_POLARITY_LOW;
+	ads->hspi->Init.CLKPhase = SPI_PHASE_2EDGE;
+	ads->hspi->Init.NSS = SPI_NSS_SOFT;
+	ads->hspi->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+	ads->hspi->Init.FirstBit = SPI_FIRSTBIT_MSB;
+	ads->hspi->Init.TIMode = SPI_TIMODE_DISABLE;
+	ads->hspi->Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+	ads->hspi->Init.CRCPolynomial = 10;
+
+	/* Init chip select info */
+	 ads->cs_port  = cs_port;
+	 ads->cs_pin   = cs_pin;
+
+	if (HAL_SPI_Init(ads->hspi) != HAL_OK)
+	{
+		ads->error_flag = 1;
+		Error_Handler();
+	}
+
+	/* Added in input code init to the parent init() so it starts with the desired values */
+	ads->config.inputCode = 0;      // clear first
+	ads->config.bits.reserved = 1;  // REQUIRED by datasheet
+	ads->config.bits.nop      = 0b01;
+	ads->config.bits.pullup  = 1;
+	ads->config.bits.dr      = 0b101;
+	ads->config.bits.mode    = 1;
+	ads->config.bits.start   = 1;
+	ads->config.bits.pga     = ADS1118_PGA_4_096V;
+}
+
+/*
+ * @brief Pseudo constructor for SMV_ads1118 instance
+ * @returns SMV_ads1118 instance
  *
- * Enables SPI for 16 bit data, is abstracted enough to reduce need IOC configurations
- */
-static void ADS1118_QuickSetup(ADS1118 *adc, SPI_HandleTypeDef *hspi, GPIO_TypeDef *cs_port, uint16_t cs_pin){
-    adc->hspi = hspi;
-    adc->hspi->Instance = SPI1;
+ * default adc_channel value is Channel 0
+*/
+SMV_ADS1118 ADS_new(void) {
+	SMV_ADS1118 ads = {
+		.error_flag = 0,
+		.channel_reads = {0}
+	};
+//	ads.adc_config =
+//		ADC_SS |
+//		ADC_CHANNEL_CLEAR |
+//		ADC_PGA |
+//		ADC_MODE |
+//		ADC_DR |
+//		ADC_TS |
+//		ADC_PU |
+//		ADC_NOP |
+//		ADC_RES;
 
+	/* function pointer definitions */
+	ads.read	 		= SMV_ADS1118_Read;
+	ads.checkFlag 		= SMV_ADS1118_Check_Flag;
+	ads.init 			= SMV_ADS1118_Setup;
+	ads.sweep			= SMV_ADS1118_Sweep;
 
-    if (adc->hspi->Instance == SPI1) __HAL_RCC_SPI1_CLK_ENABLE();
-    else if (adc->hspi->Instance == SPI2) __HAL_RCC_SPI2_CLK_ENABLE();
-    else if (adc->hspi->Instance == SPI3) __HAL_RCC_SPI3_CLK_ENABLE();
-
-    /* Configure SPI settings */
-    adc->hspi->Init.Mode              = SPI_MODE_MASTER;
-    adc->hspi->Init.Direction         = SPI_DIRECTION_2LINES;
-    adc->hspi->Init.DataSize          = SPI_DATASIZE_16BIT;
-    adc->hspi->Init.CLKPolarity       = SPI_POLARITY_LOW;
-    adc->hspi->Init.CLKPhase          = SPI_PHASE_1EDGE;
-    adc->hspi->Init.NSS               = SPI_NSS_SOFT;
-    adc->hspi->Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
-    adc->hspi->Init.FirstBit          = SPI_FIRSTBIT_MSB;
-    adc->hspi->Init.TIMode            = SPI_TIMODE_DISABLE;
-    adc->hspi->Init.CRCCalculation    = SPI_CRCCALCULATION_DISABLE;
-    adc->hspi->Init.CRCPolynomial     = 10;
-
-    if (HAL_SPI_Init(adc->hspi) != HAL_OK) Error_Handler();
-
-    /* Init chip select info */
-    adc->cs_port  = cs_port;
-    adc->cs_pin   = cs_pin;
-
-    /* Set default parameters in the bit field */
-    adc->last_raw   = 0;
-    adc->config.inputCode = 0;      // clear first
-    adc->config.bits.reserved = 1;  // REQUIRED by datasheet
-    adc->config.bits.nop      = 0b01;
-    adc->config.bits.pullup  = 1;
-    adc->config.bits.dr      = 0b101;
-    adc->config.bits.mode    = 1;
-    adc->config.bits.start   = 1;
-    adc->config.bits.pga     = ADS1118_PGA_4_096V;
-    adc->lsb_factor = ADS1118_GetLSB(adc); // generates the factor to normalize the ratio
+	return ads;
 }
-
-/*
- *  Read the raw ADC reading on the given channel
- */
-static int16_t ADS1118_ReadRaw(ADS1118 *adc, ADC_CHANNELS channel)
-{
-    /* Set MUX and leave rest of config intact */
-    adc->config.bits.mux = channel;
-
-    uint16_t inputCode = adc->config.inputCode;
-    ADS1118_Caster recievedData;
-
-    /* Send input code recieve reading */
-    HAL_GPIO_WritePin(adc->cs_port, adc->cs_pin, GPIO_PIN_RESET);
-
-    if (HAL_SPI_TransmitReceive(adc->hspi, (uint16_t*)&inputCode, (uint16_t*)&recievedData.u, 1, 100) != HAL_OK)
-    {
-        Error_Handler();
-    }
-
-    HAL_GPIO_WritePin(adc->cs_port, adc->cs_pin, GPIO_PIN_SET);
-
-    adc->last_raw = recievedData.s;
-    return recievedData.s;
-}
-
-/*
- * Convert raw reading to normalized value
- */
-static double ADS1118_Read(ADS1118 *adc, ADC_CHANNELS channel)
-{
-    int16_t raw = ADS1118_ReadRaw(adc, channel);
-    return (double)raw * adc->lsb_factor;
-}
-
-/* ===============================
-   Helper: set PGA and update LSB factor
-   =============================== */
-void ADS1118_SetPGA(ADS1118 *adc, uint8_t pga_bits, double fsr)
-{
-    adc->config.bits.pga = pga_bits;
-    adc->lsb_factor = (fsr * 2.0) / 32767.0;
-}
-
-/* ===============================
-   Constructor
-   =============================== */
-ADS1118 ADS1118_new(void)
-{
-    ADS1118 adc;
-
-    adc.init    = ADS1118_QuickSetup;
-    adc.read    = ADS1118_Read;
-    adc.readRaw = ADS1118_ReadRaw;
-
-    return adc;
-}
-
-/* Helper function to use PGA FSR value for the factor */
-static double ADS1118_GetLSB(ADS1118 *adc)
-{
-    double fsr = 0.0;
-
-    switch (adc->config.bits.pga)
-    {
-        case 0b000: fsr = 6.144; break;
-        case 0b001: fsr = 4.096; break;
-        case 0b010: fsr = 2.048; break;
-        case 0b011: fsr = 1.024; break;
-        case 0b100: fsr = 0.512; break;
-        case 0b101:
-        case 0b110:
-        case 0b111: fsr = 0.256; break;
-    }
-
-    return (fsr * 2.0) / 32767.0;
-}
-
